@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "RPA 项目完整工作流"
+  short_description: "从远程模板初始化 RPA 项目，并交接给 AI 业务开发。"
+  default_prompt: "初始化一个新的 RPA 项目，并按模板规范准备后续业务开发。"
