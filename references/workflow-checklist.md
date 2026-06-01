@@ -6,12 +6,12 @@ Use this reference when validating a project initialized by the skill.
 
 - Project name is non-empty.
 - Target directory is explicit or current working directory is intentionally used.
-- Target directory is missing or empty.
+- Target directory is missing or empty, or the user explicitly approved overwrite and the initializer was run with `--force-overwrite`.
 - Template URL defaults to `git@github.com:redballoom/rpa-dev-template.git` unless user specifies another source.
 
 ## Files That Must Exist After Initialization
 
-- `AGENT.md`
+- `AGENTS.md`
 - `README.md`
 - `run.bat`
 - `runner.py`
@@ -34,7 +34,7 @@ Use this reference when validating a project initialized by the skill.
 
 ## Handoff Contract
 
-- `AGENT.md` tells future AI agents to design `tasks[].type` and `payload` before implementing business logic.
+- `AGENTS.md` tells future AI agents to design `tasks[].type` and `payload` before implementing business logic.
 - Unknown or missing `tasks[].type` must not fake success.
 - Business logic changes belong in Python handlers and tests, not in ShadowBot UI flow by default.
 
@@ -43,11 +43,13 @@ Use this reference when validating a project initialized by the skill.
 - The template `.git` history is not copied.
 - A fresh Git repository exists in the target directory unless `--skip-git` was used.
 - The first commit captures the initialized project state.
+- When initializing over a non-empty approved target, the commit is created in the actual target directory, not in a temporary workaround directory.
 
 ## Next Step Prompt
 
 After initialization, use a prompt like:
 
 ```text
-阅读这个 RPA Python 项目的 AGENT.md、README.md 和 docs/ 输入契约。根据我的业务目标设计 input.json 的 tasks[].type 和 payload，然后实现对应 handler、示例和测试。
+阅读这个 RPA Python 项目的 AGENTS.md、README.md 和 docs/ 输入契约。根据我的业务目标设计 input.json 的 tasks[].type 和 payload，然后实现对应 handler、示例和测试。
 ```
+

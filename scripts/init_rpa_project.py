@@ -3,7 +3,7 @@
 
 This script is bundled with the rpa-project-workflow skill.
 Canonical path:
-  C:\\Users\\redballoon\\Desktop\\rpa-project-workflow\\scripts\\init_rpa_project.py
+  C:\\Users\\redballoon\\.agents\\skills\\rpa-project-workflow\\scripts\\init_rpa_project.py
 """
 from __future__ import annotations
 
@@ -62,11 +62,13 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subproce
     return proc
 
 
-def ensure_empty_or_missing(path: Path) -> None:
+def ensure_empty_or_missing(path: Path, force_overwrite: bool = False) -> None:
     if not path.exists():
         return
     if not path.is_dir():
         raise RuntimeError("target exists and is not a directory: %s" % path)
+    if force_overwrite:
+        return
     visible = [item for item in path.iterdir() if item.name not in {".DS_Store", "Thumbs.db"}]
     if visible:
         raise RuntimeError("target directory is not empty: %s" % path)
@@ -88,7 +90,12 @@ def copy_template(src_root: Path, dst_root: Path) -> None:
             continue
         dst = dst_root / src.name
         if src.is_dir():
-            shutil.copytree(src, dst, ignore=lambda directory, names: [n for n in names if should_ignore(Path(directory) / n)])
+            shutil.copytree(
+                src,
+                dst,
+                dirs_exist_ok=True,
+                ignore=lambda directory, names: [n for n in names if should_ignore(Path(directory) / n)],
+            )
         else:
             shutil.copy2(src, dst)
 
@@ -174,9 +181,21 @@ def write_run_bat(root: Path, project_name: str) -> None:
     (root / "run.bat").write_text(content, encoding="utf-8", newline="")
 
 
+def normalize_agent_entry(root: Path) -> None:
+    agents = root / "AGENTS.md"
+    agent = root / "AGENT.md"
+    if not agents.exists() and agent.exists():
+        agent.replace(agents)
+    elif agent.exists():
+        agent.unlink()
+    manual = root / "AI_OPERATION_MANUAL.md"
+    if manual.exists():
+        manual.unlink()
+
+
 def validate_handoff_files(root: Path) -> list[str]:
     required = [
-        "AGENT.md",
+        "AGENTS.md",
         "README.md",
         "runner.py",
         "run.bat",
@@ -205,6 +224,11 @@ def main() -> int:
     parser.add_argument("--target", default=os.getcwd(), help="Final target project directory; default is cwd")
     parser.add_argument("--template-url", default=DEFAULT_TEMPLATE_URL, help="Remote template Git URL")
     parser.add_argument("--skip-git", action="store_true", help="Copy and align only; do not initialize Git")
+    parser.add_argument(
+        "--force-overwrite",
+        action="store_true",
+        help="Allow copying into a non-empty target directory after explicit user approval",
+    )
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary clone directory for debugging")
     args = parser.parse_args()
 
@@ -213,7 +237,7 @@ def main() -> int:
         raise RuntimeError("--name cannot be empty")
 
     target = Path(args.target).expanduser().resolve()
-    ensure_empty_or_missing(target)
+    ensure_empty_or_missing(target, force_overwrite=args.force_overwrite)
 
     temp_parent = Path(tempfile.mkdtemp(prefix="rpa_template_"))
     clone_dir = temp_parent / "template"
@@ -226,6 +250,7 @@ def main() -> int:
 
         print("[2/5] copy template to: %s" % target)
         copy_template(clone_dir, target)
+        normalize_agent_entry(target)
 
         print("[3/5] align project identity: %s" % project_name)
         changed_files = replace_project_name(target, project_name)
@@ -251,7 +276,7 @@ def main() -> int:
             "changed_files": changed_files,
             "missing_handoff_files": missing,
             "git_commit": commit_hash,
-            "next_step": "Open AGENT.md in the project before implementing business logic.",
+            "next_step": "Open AGENTS.md in the project before implementing business logic.",
         }
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
@@ -267,5 +292,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
 
 
